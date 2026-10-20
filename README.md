@@ -1,5 +1,32 @@
 # Document Ingestion on Azure
 
+> **Four repos, run in this order.** Ingestion first — the other three read its
+> output. After that they are independent and can be done in any order, or skipped.
+>
+> 1. **Azure-Document-Ingestion** ← you are here — generates the PDFs, OCRs them, writes the training data
+> 2. [Azure-FineTuning-Foundry-Agent](https://github.com/Auxin-io/Azure-FineTuning-Foundry-Agent#readme) — fine-tunes Qwen2.5-3B on finance, serves it, wraps it in an agent
+> 3. [Azure-Employee-Pretraining](https://github.com/Auxin-io/Azure-Employee-Pretraining#readme) — trains a 3.2M-parameter model from scratch on employee docs
+> 4. [Azure-HR-RAG](https://github.com/Auxin-io/Azure-HR-RAG#readme) — retrieval over HR docs; no training at all
+
+```mermaid
+flowchart LR
+    ING["1 · Document-Ingestion<br/>PDFs → OCR → training data<br/>(you are here)"]
+    FT["2 · FineTuning-Foundry-Agent<br/>knowledge in adapter weights"]
+    PT["3 · Employee-Pretraining<br/>knowledge in the weights"]
+    RAG["4 · HR-RAG<br/>knowledge in an index"]
+
+    ING -->|"finance/*.jsonl"| FT
+    ING -->|"employee/*.jsonl"| PT
+    ING -->|"hr/*.txt"| RAG
+
+    style ING fill:#dbeafe,stroke:#2b5fc9,stroke-width:3px,color:#0b1b3a
+    style FT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
+    style PT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
+    style RAG fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
+```
+
+🔵 this repo &middot; ⚪ the three repos that read its output
+
 Generates three small business-document datasets, OCRs them with Azure AI Document Intelligence, and produces the training data for the fine-tuned model.
 
 ```
@@ -18,21 +45,6 @@ Intelligence, and produces the training data the other repos consume.
 | **employee** | 5 timesheets + 5 expense reports | employee name | *How many hours did Maya Patel work?* | Trains a 3.2M-parameter model from scratch, random weights up |
 | **finance** | 5 invoices + 5 purchase orders | vendor | *What is the Zephyr Networks invoice total?* | Fine-tunes Qwen2.5-3B with QLoRA, serves it, wraps it in an agent |
 | **hr** | 5 policies + 5 leave requests | policy title / employee | *Who approves requests under the Overtime Policy?* | Retrieval over an index, no training at all |
-
-## How they depend on each other
-
-```mermaid
-flowchart TD
-    ING["<b>Azure-Document-Ingestion</b><br/>PDFs → OCR → JSONL + text<br/>finance / employee / hr"]
-
-    FT["<b>Fine-tune</b><br/>finance closed-book JSONL<br/>knowledge in adapter weights"]
-    PT["<b>From scratch</b><br/>employee closed-book JSONL<br/>knowledge in the weights"]
-    RAG["<b>RAG</b><br/>hr OCR text<br/>knowledge in an index"]
-
-    ING -->|"finance/*.jsonl"| FT
-    ING -->|"employee/*.jsonl"| PT
-    ING -->|"hr/*.txt"| RAG
-```
 
 ## Prerequisites
 
