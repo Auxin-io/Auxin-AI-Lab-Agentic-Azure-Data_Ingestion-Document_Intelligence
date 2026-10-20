@@ -55,7 +55,7 @@ Terraform stacks create role assignments, and several steps grant roles to manag
 
 ### GPU quota
 
-This blocks more people than anything else.Need an Azure **Machine Learning**
+This blocks more people than anything else. Need an Azure **Machine Learning**
 quota for the `Standard NCASv3_T4 Family`, which is **separate from the Virtual Machines quota
 of the same family**. A fresh subscription usually has 0.
 
