@@ -2,30 +2,30 @@
 
 > **Four repos, run in this order.** Ingestion first — the other three read its
 > output. After that they are independent and can be done in any order, or skipped.
->
-> 1. **Azure-Document-Ingestion** ← you are here — generates the PDFs, OCRs them, writes the training data
-> 2. [Azure-FineTuning-Foundry-Agent](https://github.com/Auxin-io/Azure-FineTuning-Foundry-Agent#readme) — fine-tunes Qwen2.5-3B on finance, serves it, wraps it in an agent
-> 3. [Azure-Employee-Pretraining](https://github.com/Auxin-io/Azure-Employee-Pretraining#readme) — trains a 3.2M-parameter model from scratch on employee docs
-> 4. [Azure-HR-RAG](https://github.com/Auxin-io/Azure-HR-RAG#readme) — retrieval over HR docs; no training at all
+> 
+> 1. **Azure-Data-Ingestion** ← you are here — generates the PDFs, OCRs them with Document Intelligence, writes the training data
+> 2. [Azure-ML-AI-Agentic-Pre-Train](https://github.com/Auxin-io/Azure-ML-AI-Agentic-Pre-Train#readme) — trains a model from random weights on Azure ML, serves it, wraps it in a Foundry agent
+> 3. [Azure-ML-AI-Agentic-Fine-Tune](https://github.com/Auxin-io/Azure-ML-AI-Agentic-Fine-Tune#readme) — fine-tunes Qwen2.5-3B on Azure ML, serves it, wraps it in a Foundry agent
+> 4. [Azure-AI-Agentic-RAG](https://github.com/Auxin-io/Azure-AI-Agentic-RAG#readme) — retrieval over HR documents with a Foundry agent; no training at all
 
 ```mermaid
 flowchart LR
-    ING["1 · Document-Ingestion<br/>PDFs → OCR → training data<br/>(you are here)"]
-    FT["2 · FineTuning-Foundry-Agent<br/>knowledge in adapter weights"]
-    PT["3 · Employee-Pretraining<br/>knowledge in the weights"]
-    RAG["4 · HR-RAG<br/>knowledge in an index"]
+    ING["1 · Data-Ingestion<br/>PDFs → OCR → datasets<br/>(you are here)"]
+    PT["2 · Agentic Pre-Train<br/>knowledge in the weights"]
+    FT["3 · Agentic Fine-Tune<br/>knowledge in adapter weights"]
+    RAG["4 · Agentic RAG<br/>knowledge in an index"]
 
-    ING -->|"finance/*.jsonl"| FT
-    ING -->|"employee/*.jsonl"| PT
-    ING -->|"hr/*.txt"| RAG
+    ING -->|"employee"| PT
+    ING -->|"finance"| FT
+    ING -->|"hr"| RAG
 
     style ING fill:#dbeafe,stroke:#2b5fc9,stroke-width:3px,color:#0b1b3a
-    style FT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
     style PT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
+    style FT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
     style RAG fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
 ```
 
-🔵 this repo &middot; ⚪ the three repos that read its output
+🔵 this repo · ⚪ the three repos that read its output
 
 Generates three small business-document datasets, OCRs them with Azure AI Document Intelligence, and produces the training data for the fine-tuned model.
 
