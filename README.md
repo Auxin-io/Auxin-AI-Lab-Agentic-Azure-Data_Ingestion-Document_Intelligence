@@ -1,50 +1,20 @@
 # Document Ingestion on Azure
 
-> **Four repos, run in this order.** Ingestion first — the other three read its
-> output. After that they are independent and can be done in any order, or skipped.
-> 
-> 1. **Azure-Data-Ingestion** ← you are here — generates the PDFs, OCRs them with Document Intelligence, writes the training data
-> 2. [Azure-ML-AI-Agentic-Pre-Train](https://github.com/Auxin-io/Azure-ML-AI-Agentic-Pre-Train#readme) — trains a model from random weights on Azure ML, serves it, wraps it in a Foundry agent
-> 3. [Azure-ML-AI-Agentic-Fine-Tune](https://github.com/Auxin-io/Azure-ML-AI-Agentic-Fine-Tune#readme) — fine-tunes Qwen2.5-3B on Azure ML, serves it, wraps it in a Foundry agent
-> 4. [Azure-AI-Agentic-RAG](https://github.com/Auxin-io/Azure-AI-Agentic-RAG#readme) — retrieval over HR documents with a Foundry agent; no training at all
-
-```mermaid
-flowchart LR
-    ING["1 · Data-Ingestion<br/>PDFs → OCR → datasets<br/>(you are here)"]
-    PT["2 · Agentic Pre-Train<br/>knowledge in the weights"]
-    FT["3 · Agentic Fine-Tune<br/>knowledge in adapter weights"]
-    RAG["4 · Agentic RAG<br/>knowledge in an index"]
-
-    ING -->|"employee"| PT
-    ING -->|"finance"| FT
-    ING -->|"hr"| RAG
-
-    style ING fill:#dbeafe,stroke:#2b5fc9,stroke-width:3px,color:#0b1b3a
-    style PT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
-    style FT fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
-    style RAG fill:#eef0f4,stroke:#9aa3b2,stroke-width:1px,color:#3a4050
-```
-
-🔵 this repo · ⚪ the three repos that read its output
-
-Generates three small business-document datasets, OCRs them with Azure AI Document Intelligence, and produces the training data for the fine-tuned model.
-
-```
-PDF  ->  Blob Storage (raw)  ->  Document Intelligence  ->  Blob Storage (curated)  ->  JSONL
-```
-
----
-
-## The three datasets
-
 Generates three small business-document datasets, OCRs them with Azure AI Document
-Intelligence, and produces the training data the other repos consume.
+Intelligence, and produces the training data that other repos consume.
 
 | Dataset | Documents | Handle | Example question | What is used for? |
 |---|---|---|---|---|
 | **employee** | 5 timesheets + 5 expense reports | employee name | *How many hours did Maya Patel work?* | Trains a 3.2M-parameter model from scratch, random weights up |
 | **finance** | 5 invoices + 5 purchase orders | vendor | *What is the Zephyr Networks invoice total?* | Fine-tunes Qwen2.5-3B with QLoRA, serves it, wraps it in an agent |
 | **hr** | 5 policies + 5 leave requests | policy title / employee | *Who approves requests under the Overtime Policy?* | Retrieval over an index, no training at all |
+
+
+```
+PDF  ->  Blob Storage (raw)  ->  Document Intelligence  ->  Blob Storage (curated)  ->  JSONL
+```
+
+---
 
 ## Prerequisites
 
@@ -79,8 +49,11 @@ choices. Mixing regions across the two Terraform stacks works but adds egress an
 benefit.
 
 ---
+## How To Setup
 
-## Step 1 — deploy the storage and OCR service
+Follow the below steps to generate three small business-document datasets, OCRs them with Azure AI Document Intelligence, and produces the training data
+
+### Step 1 — deploy the storage and OCR service
 
 Terraform creates them:
 
@@ -101,10 +74,6 @@ cd ..
 | Document Intelligence | `<prefix>-docintel-<suffix>` | the OCR service, `prebuilt-read` model |
 | Two role assignments | on the identity running `terraform apply` | `Storage Blob Data Contributor`, `Cognitive Services User` |
 
-Authentication is Azure AD end to end — the storage account has shared keys **disabled** and
-Document Intelligence has local auth **disabled**. `az login` is the whole setup; the scripts
-use `DefaultAzureCredential`.
-
 Export the connection values (or let `run_all.sh` read them from Terraform):
 
 ```bash
@@ -114,7 +83,7 @@ export AZURE_DOCINTEL_ENDPOINT=$(terraform -chdir=terraform output -raw docintel
 
 Keep `storage_account` to hand — every other repo needs it.
 
-## Step 2 — run the ingestion
+### Step 2 — run the ingestion
 
 ```bash
 python3 -m venv .venv
@@ -134,35 +103,7 @@ bash run_all.sh
 | 5 | `build_closed_book.py --dataset finance --upload` | **Closed-book JSONL for finance** question → answer, no document text. `--upload` also writes it to `curated/datasets/` so Azure ML reads it from Blob |
 | 6 | `build_closed_book.py --dataset employee --upload` | **Closed-book JSONL for employee**, the same way |
 
-### What `--upload` does, and why it matters
-
-`run_all.sh` builds **both** closed-book datasets - finance and
-employee and uploads both. You do not have to run anything
-extra.
-
-`--upload` is the part that matters: it writes the JSONL into
-`curated/datasets/` in Blob Storage, which is where Azure ML reads it from.
-Build without `--upload` and the files exist only on your laptop, where the
-training job cannot see them.
-
-To rebuild one dataset on its own: (**Optional**)
-
-```bash
-python build_closed_book.py --dataset finance  --upload
-python build_closed_book.py --dataset employee --upload
-```
-
-## Step 3 — what comes out
-
-```
-data/pdfs/<dataset>/                 the PDFs
-data/pdfs/ground_truth_<dataset>.json    task, instruction, output, facts per document
-data/dataset_<dataset>/*.jsonl       open book  - {task, instruction, input: <OCR text>, output}
-data/closed_book_<dataset>/*.jsonl   closed book - {task, instruction, input: "", output}
-curated/datasets/closed_book_<dataset>/*.jsonl    the same files in Blob Storage - this is what training reads
-```
-
-### Check it worked
+#### Check it worked
 
 ```bash
 az storage blob list --account-name $AZURE_STORAGE_ACCOUNT --container-name curated \
@@ -171,36 +112,6 @@ az storage blob list --account-name $AZURE_STORAGE_ACCOUNT --container-name cura
 
 You should see `documents/doc-finance-001.txt`, `doc-employee-001.txt`, `doc-hr-001.txt` and so
 on — 30 text files plus their JSON metadata.
-
-### The closed-book data — what trains the weights
-
-```
-train        615 rows     50 facts x 12.3 phrasings, plus refusals
-validation    61 rows
-test         123 rows     a wrapper never seen in training
-```
-
-Built straight from the generator's `facts`, not from OCR — so a transcription slip cannot teach
-the model a wrong number. Every fact is asked several ways, because a model learns *wording*,
-not intent.
-
-### The open-book data
-
-`input` is the genuine Document Intelligence output. It does not produce tidy key-value text —
-tables come back as header lines followed by value lines, so a label can sit several lines from
-its value:
-
-```
-Invoice No.
-Issue Date
-Due Date
-INV-28251
-2026-07-28
-2026-04-27
-```
-
-**No chunking.** The longest document is a few hundred tokens against a 1,024-token context, so
-every document goes into the prompt whole.
 
 ## Files
 
@@ -214,7 +125,5 @@ terraform/              resource group, storage account, containers, Document In
 requirements.txt        azure-identity, azure-storage-blob, azure-ai-documentintelligence, reportlab
 data/                   generated, gitignored - regenerates identically from the seed
 ```
-
-Known limits: PII screening in `extract` is regex and over-flags (it tags, it does not block).
-The corpus is synthetic — reproducible and leakage-free, but not real business data. Ten
+e corpus is synthetic — reproducible and leakage-free, but not real business data. Ten
 documents per dataset is enough to demonstrate closed-book recall.
