@@ -1,7 +1,11 @@
 # Document Ingestion on Azure
 
-Generates three small business-document datasets, OCRs them with Azure AI Document
-Intelligence, and produces the training data that other repos consume.
+This repo turns three small business-document PDFs into the training data the other repos use it.
+
+What it does:
+- Creates sample business PDFs for Employee, Finance and HR
+- Reads the text from them with Azure AI Document Intelligence (OCR)
+- Builds the training datasets and the search index
 
 | Dataset | Documents | Handle | Example question | What is used for? |
 |---|---|---|---|---|
@@ -125,5 +129,3 @@ terraform/              resource group, storage account, containers, Document In
 requirements.txt        azure-identity, azure-storage-blob, azure-ai-documentintelligence, reportlab
 data/                   generated, gitignored - regenerates identically from the seed
 ```
-e corpus is synthetic — reproducible and leakage-free, but not real business data. Ten
-documents per dataset is enough to demonstrate closed-book recall.
