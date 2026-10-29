@@ -20,6 +20,14 @@ PDF  ->  Blob Storage (raw)  ->  Document Intelligence  ->  Blob Storage (curate
 
 ---
 
+## Workflow diagram
+
+The diagram below shows the workflow of the project.
+
+<img width="2700" height="1270" alt="AI Project#1 - Doc Intel Azure - Data-Ingestion-Workflow" src="images/data-ingestion-workflow.png" />
+
+---
+
 ## Prerequisites
 
 ### Permissions
